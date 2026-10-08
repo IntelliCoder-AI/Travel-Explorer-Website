@@ -1,5 +1,9 @@
 # 🌍 Travel Explorer
 
+### Live Demo
+
+🔗 [Travel Explorer — Live Demo](https://travel-explorer-wine.vercel.app/)
+
 A modern, interactive web application for exploring countries around the world. Built with React, Tailwind CSS, and Framer Motion for a university project showcasing front-end development skills.
 
 ## ✨ Features
