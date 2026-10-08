@@ -6,8 +6,8 @@ A modern, interactive web application for exploring countries around the world. 
 
 ### 🔐 Authentication System
 - **User Registration**: Create new accounts with form validation
-- **User Login**: Secure login with email and password
-- **Local Storage**: Simulated backend using browser local storage
+- **User Login**: Browser-local demo login with email and password
+- **Local Storage**: Simulated backend using salted password digests in browser local storage
 - **Success Notifications**: Clear feedback for registration and login
 
 ### 🏠 Home Page

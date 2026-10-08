@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
@@ -23,10 +23,9 @@ const CountryDetailPage = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const { isDark, toggleTheme } = useTheme();
-  const [country, setCountry] = useState(null);
   const [activeTab, setActiveTab] = useState('destinations');
 
-  useEffect(() => {
+  const country = useMemo(() => {
     try {
       // First try to find in existing detailed countries
       let foundCountry = countriesData.countries.find(c => c.id === countryId);
@@ -36,10 +35,10 @@ const CountryDetailPage = () => {
         foundCountry = generateCountryData(null, countryId);
       }
       
-      setCountry(foundCountry);
+      return foundCountry;
     } catch (error) {
       console.error('Error loading country data:', error);
-      setCountry(null);
+      return null;
     }
   }, [countryId]);
 

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Search, Filter, Globe, LogOut, Moon, Sun, MapPin } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -6,14 +6,16 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useNavigate } from 'react-router-dom';
 import countriesData from '../data/countries.json';
 import Pagination from '../components/Pagination';
-import { searchCountries, generateCountryData } from '../utils/countryUtils';
+import { searchCountries } from '../utils/countryUtils';
+
+const FALLBACK_COUNTRY_IMAGE = '/images/travel-fallback.png';
 
 const HomePage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedContinent, setSelectedContinent] = useState('All');
   const [sortBy, setSortBy] = useState('name-asc');
   const [currentPage, setCurrentPage] = useState(1);
-  const [isSearching, setIsSearching] = useState(false);
+  const isSearching = Boolean(searchTerm);
   
   const { user, logout } = useAuth();
   const { isDark, toggleTheme } = useTheme();
@@ -24,11 +26,6 @@ const HomePage = () => {
 
   // Get unique continents
   const continents = ['All', ...new Set(countriesData.countries.map(country => country.continent))];
-
-  // Set searching state based on search term
-  React.useEffect(() => {
-    setIsSearching(!!searchTerm);
-  }, [searchTerm]);
 
   // Get paginated countries for homepage display
   const paginatedCountries = useMemo(() => {
@@ -194,7 +191,7 @@ const HomePage = () => {
     };
     
     // If we don't have a specific image, generate a search query for landmarks
-    return imageMap[countryName] || `https://source.unsplash.com/800x600/?${encodeURIComponent(countryName + ' landmark')}`;
+    return imageMap[countryName] || FALLBACK_COUNTRY_IMAGE;
   };
 
   // Helper function to get country code for flags
@@ -488,7 +485,10 @@ const HomePage = () => {
               onClick={() => handleCountryClick(country.id)}
             >
               {/* Country Image */}
-              <div className="relative h-48 overflow-hidden bg-gray-100 dark:bg-gray-800">
+              <div
+                className="relative h-48 overflow-hidden bg-cover bg-center bg-gray-100 dark:bg-gray-800"
+                style={{ backgroundImage: `url(${FALLBACK_COUNTRY_IMAGE})` }}
+              >
                 <img
                   loading="lazy"
                   src={(country.id && {
@@ -499,15 +499,10 @@ const HomePage = () => {
                     'france': 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800&q=80',
                     'italy': 'https://images.unsplash.com/photo-1552832230-c0197dd311b5?w=800&q=80'
                   }[country.id.toLowerCase()]) || country.monumentImage || `https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800&q=80&auto=format&fit=crop`}
-                  onError={(e) => {
-                    e.target.onerror = null;
-                    const specificImages = {
-                      'chile': 'https://images.unsplash.com/photo-1601224335112-e2fc528261ae?w=800&q=80',
-                      'colombia': 'https://images.unsplash.com/photo-1562786198-a46c860077b2?w=800&q=80',
-                      'egypt': 'https://images.unsplash.com/photo-1572252009286-268acec5ca0a?w=800&q=80'
-                    };
-                    e.target.src = specificImages[country.id.toLowerCase()] || 
-                                 `https://source.unsplash.com/800x600/?${encodeURIComponent(country.name + ' landmark,famous')}`;
+                  onError={(event) => {
+                    const image = event.currentTarget;
+                    image.onerror = null;
+                    image.src = FALLBACK_COUNTRY_IMAGE;
                   }}
                   alt={`${country.name || 'Country'} landmark`}
                   className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"

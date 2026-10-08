@@ -1,6 +1,34 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 
 const AuthContext = createContext();
+const PASSWORD_ITERATIONS = 210000;
+
+const bytesToBase64 = (bytes) => btoa(String.fromCharCode(...bytes));
+
+const base64ToBytes = (value) =>
+  Uint8Array.from(atob(value), character => character.charCodeAt(0));
+
+const createPasswordDigest = async (password, salt) => {
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(password),
+    'PBKDF2',
+    false,
+    ['deriveBits']
+  );
+  const digest = await crypto.subtle.deriveBits(
+    {
+      name: 'PBKDF2',
+      hash: 'SHA-256',
+      salt: base64ToBytes(salt),
+      iterations: PASSWORD_ITERATIONS,
+    },
+    keyMaterial,
+    256
+  );
+
+  return bytesToBase64(new Uint8Array(digest));
+};
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
@@ -11,19 +39,19 @@ export const useAuth = () => {
 };
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    // Check if user is logged in on app start
-    const savedUser = localStorage.getItem('travel-explorer-user');
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
+  const [user, setUser] = useState(() => {
+    try {
+      const savedUser = localStorage.getItem('travel-explorer-user');
+      return savedUser ? JSON.parse(savedUser) : null;
+    } catch (error) {
+      console.error('Unable to restore the saved user session:', error);
+      localStorage.removeItem('travel-explorer-user');
+      return null;
     }
-    setLoading(false);
-  }, []);
+  });
+  const loading = false;
 
-  const register = (userData) => {
+  const register = async (userData) => {
     // Get existing users from localStorage
     const existingUsers = JSON.parse(localStorage.getItem('travel-explorer-users') || '[]');
     
@@ -34,9 +62,14 @@ export const AuthProvider = ({ children }) => {
     }
 
     // Add new user
+    const salt = bytesToBase64(crypto.getRandomValues(new Uint8Array(16)));
+    const passwordDigest = await createPasswordDigest(userData.password, salt);
     const newUser = {
       id: Date.now().toString(),
-      ...userData,
+      name: userData.name,
+      email: userData.email,
+      passwordDigest,
+      passwordSalt: salt,
       createdAt: new Date().toISOString()
     };
     
@@ -46,17 +79,34 @@ export const AuthProvider = ({ children }) => {
     return { success: true, message: 'Registration successful!' };
   };
 
-  const login = (email, password) => {
+  const login = async (email, password) => {
     const existingUsers = JSON.parse(localStorage.getItem('travel-explorer-users') || '[]');
-    const user = existingUsers.find(u => u.email === email && u.password === password);
+    const user = existingUsers.find(u => u.email === email);
+    let passwordMatches = false;
+
+    if (user?.passwordDigest && user?.passwordSalt) {
+      const candidateDigest = await createPasswordDigest(password, user.passwordSalt);
+      passwordMatches = candidateDigest === user.passwordDigest;
+    } else if (user?.password) {
+      // Migrate accounts created by older versions away from plaintext storage.
+      passwordMatches = user.password === password;
+      if (passwordMatches) {
+        user.passwordSalt = bytesToBase64(crypto.getRandomValues(new Uint8Array(16)));
+        user.passwordDigest = await createPasswordDigest(password, user.passwordSalt);
+        delete user.password;
+        localStorage.setItem('travel-explorer-users', JSON.stringify(existingUsers));
+      }
+    }
     
-    if (!user) {
+    if (!user || !passwordMatches) {
       throw new Error('Invalid email or password');
     }
 
     // Save user session
     const userSession = { ...user };
-    delete userSession.password; // Don't store password in session
+    delete userSession.password;
+    delete userSession.passwordDigest;
+    delete userSession.passwordSalt;
     
     localStorage.setItem('travel-explorer-user', JSON.stringify(userSession));
     setUser(userSession);

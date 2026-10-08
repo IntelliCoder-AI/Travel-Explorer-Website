@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Eye, EyeOff, Globe, Moon, Sun } from 'lucide-react';
+import { Eye, EyeOff, Moon, Sun } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -366,6 +366,9 @@ const LoginPage = () => {
               >
                 {isLogin ? 'Sign up' : 'Sign in'}
               </button>
+            </p>
+            <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+              Demo mode: account data stays in this browser and is not synced to a server.
             </p>
           </div>
           </motion.div>
